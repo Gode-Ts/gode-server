@@ -32,7 +32,7 @@ func TestGenerateWorkerGoModUsesLocalRuntimeReplace(t *testing.T) {
 
 	for _, want := range []string{
 		"require (",
-		"github.com/Gode-Ts/gode-runtime v0.0.0",
+		"github.com/Gode-Ts/gode-runtime v0.1.0",
 		"golang.org/x/sync v0.15.0",
 		"replace github.com/Gode-Ts/gode-runtime => " + filepath.ToSlash(rel),
 	} {
@@ -65,7 +65,7 @@ func TestGenerateWorkerGoModUsesLocalGopressReplace(t *testing.T) {
 
 	for _, want := range []string{
 		"require (",
-		"github.com/Gode-Ts/gopress v0.0.0",
+		"github.com/Gode-Ts/gopress v0.1.0",
 		"golang.org/x/sync v0.15.0",
 		"replace github.com/Gode-Ts/gopress => " + filepath.ToSlash(rel),
 	} {
@@ -75,5 +75,51 @@ func TestGenerateWorkerGoModUsesLocalGopressReplace(t *testing.T) {
 	}
 	if strings.Contains(got, "github.com/Gode-Ts/gode-runtime") {
 		t.Fatalf("gopress worker should not require gode-runtime:\n%s", got)
+	}
+}
+
+func TestGenerateWorkerGoModUsesTaggedGopressWithoutLocalReplace(t *testing.T) {
+	root := t.TempDir()
+	appDir := filepath.Join(root, "app")
+	wrapperDir := filepath.Join(appDir, ".gode", "work", "abc123", "wrapper")
+	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got := builder.GenerateWorkerGoMod(wrapperDir, appDir, "gopress")
+
+	for _, want := range []string{
+		"github.com/Gode-Ts/gopress v0.1.0",
+		"golang.org/x/sync v0.15.0",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("worker go.mod missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "replace github.com/Gode-Ts/gopress") {
+		t.Fatalf("remote gopress worker should not include a local replace:\n%s", got)
+	}
+}
+
+func TestGenerateWorkerGoModUsesTaggedRuntimeWithoutLocalReplace(t *testing.T) {
+	root := t.TempDir()
+	appDir := filepath.Join(root, "app")
+	wrapperDir := filepath.Join(appDir, ".gode", "work", "abc123", "wrapper")
+	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got := builder.GenerateWorkerGoMod(wrapperDir, appDir, "")
+
+	for _, want := range []string{
+		"github.com/Gode-Ts/gode-runtime v0.1.0",
+		"golang.org/x/sync v0.15.0",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("worker go.mod missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "replace github.com/Gode-Ts/gode-runtime") {
+		t.Fatalf("remote runtime worker should not include a local replace:\n%s", got)
 	}
 }

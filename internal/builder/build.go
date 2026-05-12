@@ -124,8 +124,10 @@ func Check(ctx context.Context, cfg config.Config, compilerPath string) error {
 }
 
 const (
-	runtimeModule = "github.com/Gode-Ts/gode-runtime"
-	gopressModule = "github.com/Gode-Ts/gopress"
+	runtimeModule  = "github.com/Gode-Ts/gode-runtime"
+	runtimeVersion = "v0.1.0"
+	gopressModule  = "github.com/Gode-Ts/gopress"
+	gopressVersion = "v0.1.0"
 )
 
 func GenerateWorkerGoMod(wrapperDir string, rootDir string, framework string) string {
@@ -134,9 +136,17 @@ func GenerateWorkerGoMod(wrapperDir string, rootDir string, framework string) st
 	b.WriteString("go 1.23.0\n\n")
 	b.WriteString("require (\n")
 	if framework == "gopress" {
-		b.WriteString("\tgithub.com/Gode-Ts/gopress v0.0.0\n")
+		b.WriteString("\t")
+		b.WriteString(gopressModule)
+		b.WriteString(" ")
+		b.WriteString(gopressVersion)
+		b.WriteString("\n")
 	} else {
-		b.WriteString("\tgithub.com/Gode-Ts/gode-runtime v0.0.0\n")
+		b.WriteString("\t")
+		b.WriteString(runtimeModule)
+		b.WriteString(" ")
+		b.WriteString(runtimeVersion)
+		b.WriteString("\n")
 	}
 	b.WriteString("\tgolang.org/x/sync v0.15.0\n")
 	b.WriteString(")\n")
