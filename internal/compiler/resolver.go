@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,7 +42,7 @@ func Resolve(opts ResolveOptions) (Command, error) {
 			return Command{Command: "go", Args: []string{"run", "./cmd/godec"}, Dir: local}, nil
 		}
 	}
-	return Command{}, errors.New("godec not found; pass --compiler, set GODEC, install godec in PATH, or keep ./gode-compiler available")
+	return Command{Command: "go", Args: []string{"run", "github.com/Gode-Ts/gode-compiler/cmd/godec@latest"}}, nil
 }
 
 func (c Command) ArgsFor(extra ...string) []string {

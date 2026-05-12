@@ -41,3 +41,19 @@ func TestResolverFallsBackToLocalCompiler(t *testing.T) {
 		t.Fatalf("unexpected local fallback: %+v", resolved)
 	}
 }
+
+func TestResolverFallsBackToRemoteCompiler(t *testing.T) {
+	dir := t.TempDir()
+	resolved, err := compiler.Resolve(compiler.ResolveOptions{RootDir: dir, LookupPath: func(string) (string, error) {
+		return "", os.ErrNotExist
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Command != "go" {
+		t.Fatalf("expected go remote fallback command, got %+v", resolved)
+	}
+	if len(resolved.Args) != 2 || resolved.Args[0] != "run" || resolved.Args[1] != "github.com/Gode-Ts/gode-compiler/cmd/godec@latest" || resolved.Dir != "" {
+		t.Fatalf("unexpected remote fallback: %+v", resolved)
+	}
+}
