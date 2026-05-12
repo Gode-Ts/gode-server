@@ -82,7 +82,7 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 	if err := os.WriteFile(filepath.Join(wrapperDir, "main.go"), []byte(wrapper), 0o644); err != nil {
 		return Result{}, err
 	}
-	if err := os.WriteFile(filepath.Join(wrapperDir, "go.mod"), []byte(GenerateWorkerGoMod(wrapperDir, cfg.RootDir)), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(wrapperDir, "go.mod"), []byte(GenerateWorkerGoMod(wrapperDir, cfg.RootDir, cfg.Framework)), 0o644); err != nil {
 		return Result{}, err
 	}
 	output := opts.Output
@@ -123,17 +123,35 @@ func Check(ctx context.Context, cfg config.Config, compilerPath string) error {
 	return runCommand(ctx, resolved, "check", srcDir, "--config", cfg.Path, "--format", "json")
 }
 
-const runtimeModule = "github.com/Gode-Ts/gode-runtime"
+const (
+	runtimeModule = "github.com/Gode-Ts/gode-runtime"
+	gopressModule = "github.com/Gode-Ts/gopress"
+)
 
-func GenerateWorkerGoMod(wrapperDir string, rootDir string) string {
+func GenerateWorkerGoMod(wrapperDir string, rootDir string, framework string) string {
 	var b strings.Builder
 	b.WriteString("module gode.app/worker\n\n")
 	b.WriteString("go 1.23.0\n\n")
 	b.WriteString("require (\n")
-	b.WriteString("\tgithub.com/Gode-Ts/gode-runtime v0.0.0\n")
+	if framework == "gopress" {
+		b.WriteString("\tgithub.com/Gode-Ts/gopress v0.0.0\n")
+	} else {
+		b.WriteString("\tgithub.com/Gode-Ts/gode-runtime v0.0.0\n")
+	}
 	b.WriteString("\tgolang.org/x/sync v0.15.0\n")
 	b.WriteString(")\n")
-	if local, ok := localRuntimePath(rootDir, wrapperDir); ok {
+	if framework == "gopress" {
+		if local, ok := localModulePath(rootDir, wrapperDir, "gopress"); ok {
+			b.WriteString("\n")
+			b.WriteString("replace ")
+			b.WriteString(gopressModule)
+			b.WriteString(" => ")
+			b.WriteString(filepath.ToSlash(local))
+			b.WriteString("\n")
+		}
+		return b.String()
+	}
+	if local, ok := localModulePath(rootDir, wrapperDir, "gode-runtime"); ok {
 		b.WriteString("\n")
 		b.WriteString("replace ")
 		b.WriteString(runtimeModule)
@@ -144,8 +162,8 @@ func GenerateWorkerGoMod(wrapperDir string, rootDir string) string {
 	return b.String()
 }
 
-func localRuntimePath(rootDir string, wrapperDir string) (string, bool) {
-	candidates := runtimeCandidates(rootDir)
+func localModulePath(rootDir string, wrapperDir string, moduleDir string) (string, bool) {
+	candidates := moduleCandidates(rootDir, moduleDir)
 	seen := map[string]bool{}
 	for _, candidate := range candidates {
 		abs, err := filepath.Abs(candidate)
@@ -168,7 +186,7 @@ func localRuntimePath(rootDir string, wrapperDir string) (string, bool) {
 	return "", false
 }
 
-func runtimeCandidates(rootDir string) []string {
+func moduleCandidates(rootDir string, moduleDir string) []string {
 	var bases []string
 	addBase := func(path string) {
 		if path == "" {
@@ -187,8 +205,8 @@ func runtimeCandidates(rootDir string) []string {
 	var out []string
 	for _, base := range bases {
 		out = append(out,
-			filepath.Join(base, "gode-runtime"),
-			filepath.Join(base, "..", "gode-runtime"),
+			filepath.Join(base, moduleDir),
+			filepath.Join(base, "..", moduleDir),
 		)
 	}
 	return out

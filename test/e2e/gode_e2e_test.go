@@ -50,6 +50,41 @@ func TestBuildProducesStandaloneServer(t *testing.T) {
 	}
 }
 
+func TestGopressBuildProducesStandaloneServer(t *testing.T) {
+	root := repoRoot(t)
+	appDir := t.TempDir()
+	runGode(t, root, "init", "--framework", "gopress", "--dir", appDir)
+	binPath := filepath.Join(appDir, "dist", "app")
+	runGode(t, root, "build", "--config", filepath.Join(appDir, "gode.json"), "--output", binPath)
+
+	port := freePort(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cmd := exec.CommandContext(ctx, binPath)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("GODE_PORT=%d", port))
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	logFile, err := os.Create(filepath.Join(appDir, "gopress-server.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer logFile.Close()
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		cancel()
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		_ = cmd.Wait()
+	}()
+
+	body := waitBody(t, fmt.Sprintf("http://127.0.0.1:%d/users/abc", port), "", "abc")
+	if body != "abc" {
+		t.Fatalf("expected abc, got %q", body)
+	}
+}
+
 func TestDevReloadKeepsOldWorkerOnBuildFailure(t *testing.T) {
 	root := repoRoot(t)
 	appDir := t.TempDir()

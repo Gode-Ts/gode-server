@@ -77,3 +77,24 @@ func TestGenerateWrapperContainsMiddlewareOrderAndHandlerCall(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateWrapperForGopressUsesBuildGopressApp(t *testing.T) {
+	cfg := config.Default()
+	cfg.Framework = "gopress"
+	src, err := builder.GenerateWrapper(cfg, "127.0.0.1", 3000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`"github.com/Gode-Ts/gopress"`,
+		"gopress.ListenAndServe(gopress.ServerConfig{",
+		"App:  BuildGopressApp(),",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("gopress wrapper missing %q:\n%s", want, src)
+		}
+	}
+	if strings.Contains(src, "github.com/Gode-Ts/gode-runtime") {
+		t.Fatalf("gopress wrapper should not import gode-runtime:\n%s", src)
+	}
+}

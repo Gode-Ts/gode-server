@@ -92,3 +92,49 @@ func TestValidateRejectsUnknownMiddlewareAndDuplicateRoute(t *testing.T) {
 		t.Fatalf("expected duplicate route and unknown middleware errors, got %v", err)
 	}
 }
+
+func TestLoadGopressManifestDoesNotRequireResourceRoutes(t *testing.T) {
+	dir := t.TempDir()
+	srcDir := filepath.Join(dir, "src")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "app.ts"), []byte(`import gopress from "gopress"
+const app = gopress()
+export default app
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(dir, "gode.json")
+	if err := os.WriteFile(manifest, []byte(`{
+	  "framework": "gopress",
+	  "entry": "./src",
+	  "out": "./.gode/gen",
+	  "package": "app",
+	  "server": {
+	    "host": "127.0.0.1",
+	    "port": 3000
+	  },
+	  "build": {
+	    "workDir": "./.gode/work",
+	    "binDir": "./.gode/bin",
+	    "distDir": "./dist",
+	    "reloadDebounce": "250ms",
+	    "startupTimeout": "5s",
+	    "shutdownTimeout": "10s"
+	  }
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Framework != "gopress" {
+		t.Fatalf("expected gopress framework, got %q", cfg.Framework)
+	}
+	if len(cfg.FlatRoutes()) != 0 {
+		t.Fatalf("gopress manifest should not require manifest routes: %+v", cfg.FlatRoutes())
+	}
+}

@@ -17,6 +17,9 @@ func GenerateWrapper(cfg config.Config, host string, port int) (string, error) {
 	if port == 0 {
 		port = cfg.Server.Port
 	}
+	if cfg.Framework == "gopress" {
+		return generateGopressWrapper(host, port)
+	}
 	var b bytes.Buffer
 	w := func(format string, args ...any) {
 		if len(args) == 0 {
@@ -85,6 +88,36 @@ func GenerateWrapper(cfg config.Config, host string, port int) (string, error) {
 		w("if cookie, err := request.Cookie(%q); err == nil { ctx.%s = cookie.Value }", name, tsFieldToGo(cfg.ContextFieldForCookie(name)))
 	}
 	w("return ctx")
+	w("}")
+	formatted, err := format.Source(b.Bytes())
+	if err != nil {
+		return b.String(), err
+	}
+	return string(formatted), nil
+}
+
+func generateGopressWrapper(host string, port int) (string, error) {
+	var b bytes.Buffer
+	w := func(format string, args ...any) {
+		if len(args) == 0 {
+			b.WriteString(format)
+		} else {
+			fmt.Fprintf(&b, format, args...)
+		}
+		b.WriteByte('\n')
+	}
+	w("package main")
+	w("")
+	w("import %q", "github.com/Gode-Ts/gopress")
+	w("")
+	w("func main() {")
+	w("if err := gopress.ListenAndServe(gopress.ServerConfig{")
+	w("Host: %s,", quote(host))
+	w("Port: %d,", port)
+	w("App: BuildGopressApp(),")
+	w("}); err != nil {")
+	w("panic(err)")
+	w("}")
 	w("}")
 	formatted, err := format.Source(b.Bytes())
 	if err != nil {

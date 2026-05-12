@@ -50,7 +50,19 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("gode init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	dir := fs.String("dir", ".", "project directory")
+	framework := fs.String("framework", "gode", "project framework: gode or gopress")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	manifest := starterManifest
+	app := starterApp
+	switch *framework {
+	case "", "gode":
+	case "gopress":
+		manifest = gopressStarterManifest
+		app = gopressStarterApp
+	default:
+		fmt.Fprintf(stderr, "init failed: unsupported framework %q\n", *framework)
 		return 2
 	}
 	if err := os.MkdirAll(filepath.Join(*dir, "src"), 0o755); err != nil {
@@ -58,8 +70,8 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	files := map[string]string{
-		filepath.Join(*dir, "gode.json"):     starterManifest,
-		filepath.Join(*dir, "src", "app.ts"): starterApp,
+		filepath.Join(*dir, "gode.json"):     manifest,
+		filepath.Join(*dir, "src", "app.ts"): app,
 	}
 	for path, content := range files {
 		if _, err := os.Stat(path); err == nil {
@@ -223,4 +235,37 @@ export async function auditUserRead(ctx: GodeContext): Promise<GodeMiddlewareRes
 export async function getUser(ctx: GodeContext): Promise<GodeResponse> {
   return { status: 200, body: ctx.paramId, contentType: "text/plain" }
 }
+`
+
+const gopressStarterManifest = `{
+  "framework": "gopress",
+  "entry": "./src",
+  "out": "./.gode/gen",
+  "package": "app",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 3000
+  },
+  "build": {
+    "workDir": "./.gode/work",
+    "binDir": "./.gode/bin",
+    "distDir": "./dist",
+    "reloadDebounce": "250ms",
+    "startupTimeout": "5s",
+    "shutdownTimeout": "10s"
+  }
+}
+`
+
+const gopressStarterApp = `import gopress, { Request, Response } from "gopress"
+
+const app = gopress()
+
+app.use(gopress.json())
+
+app.get("/users/:id", async (req: Request, res: Response) => {
+  res.status(200).send(req.params.id)
+})
+
+export default app
 `

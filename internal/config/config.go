@@ -19,6 +19,7 @@ type Config struct {
 	Entry      string `json:"entry"`
 	Out        string `json:"out"`
 	Package    string `json:"package"`
+	Framework  string `json:"framework"`
 	Server     Server `json:"server"`
 	Build      Build  `json:"build"`
 	knownNames map[string]bool
@@ -162,6 +163,9 @@ func (c Config) Validate() error {
 	if c.Entry == "" {
 		errs = append(errs, "entry is required")
 	}
+	if c.Framework != "" && c.Framework != "gode" && c.Framework != "gopress" {
+		errs = append(errs, "framework must be one of: gode, gopress")
+	}
 	if c.Server.Port < 0 || c.Server.Port > 65535 {
 		errs = append(errs, "server.port must be between 0 and 65535")
 	}
@@ -173,6 +177,13 @@ func (c Config) Validate() error {
 	}
 	if _, err := time.ParseDuration(c.Build.ShutdownTimeout); err != nil {
 		errs = append(errs, "build.shutdownTimeout must be a duration")
+	}
+	if c.Framework == "gopress" {
+		if len(errs) > 0 {
+			sort.Strings(errs)
+			return errors.New(strings.Join(errs, "; "))
+		}
+		return nil
 	}
 	seenRoutes := map[string]bool{}
 	for resourceName, resource := range c.Server.Resources {

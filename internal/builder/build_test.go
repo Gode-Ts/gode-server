@@ -24,7 +24,7 @@ func TestGenerateWorkerGoModUsesLocalRuntimeReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := builder.GenerateWorkerGoMod(wrapperDir, appDir)
+	got := builder.GenerateWorkerGoMod(wrapperDir, appDir, "")
 	rel, err := filepath.Rel(wrapperDir, runtimeDir)
 	if err != nil {
 		t.Fatal(err)
@@ -39,5 +39,41 @@ func TestGenerateWorkerGoModUsesLocalRuntimeReplace(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("worker go.mod missing %q:\n%s", want, got)
 		}
+	}
+}
+
+func TestGenerateWorkerGoModUsesLocalGopressReplace(t *testing.T) {
+	root := t.TempDir()
+	appDir := filepath.Join(root, "app")
+	wrapperDir := filepath.Join(appDir, ".gode", "work", "abc123", "wrapper")
+	gopressDir := filepath.Join(root, "gopress")
+	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(gopressDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gopressDir, "go.mod"), []byte("module github.com/Gode-Ts/gopress\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := builder.GenerateWorkerGoMod(wrapperDir, appDir, "gopress")
+	rel, err := filepath.Rel(wrapperDir, gopressDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{
+		"require (",
+		"github.com/Gode-Ts/gopress v0.0.0",
+		"golang.org/x/sync v0.15.0",
+		"replace github.com/Gode-Ts/gopress => " + filepath.ToSlash(rel),
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("worker go.mod missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "github.com/Gode-Ts/gode-runtime") {
+		t.Fatalf("gopress worker should not require gode-runtime:\n%s", got)
 	}
 }
