@@ -82,7 +82,7 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 	if err := os.WriteFile(filepath.Join(wrapperDir, "main.go"), []byte(wrapper), 0o644); err != nil {
 		return Result{}, err
 	}
-	if err := os.WriteFile(filepath.Join(wrapperDir, "go.mod"), []byte("module gode.app/worker\n\ngo 1.23.0\n\nrequire golang.org/x/sync v0.15.0\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(wrapperDir, "go.mod"), []byte(GenerateWorkerGoMod(wrapperDir, cfg.RootDir)), 0o644); err != nil {
 		return Result{}, err
 	}
 	output := opts.Output
@@ -121,6 +121,77 @@ func Check(ctx context.Context, cfg config.Config, compilerPath string) error {
 		return err
 	}
 	return runCommand(ctx, resolved, "check", srcDir, "--config", cfg.Path, "--format", "json")
+}
+
+const runtimeModule = "github.com/Gode-Ts/gode-runtime"
+
+func GenerateWorkerGoMod(wrapperDir string, rootDir string) string {
+	var b strings.Builder
+	b.WriteString("module gode.app/worker\n\n")
+	b.WriteString("go 1.23.0\n\n")
+	b.WriteString("require (\n")
+	b.WriteString("\tgithub.com/Gode-Ts/gode-runtime v0.0.0\n")
+	b.WriteString("\tgolang.org/x/sync v0.15.0\n")
+	b.WriteString(")\n")
+	if local, ok := localRuntimePath(rootDir, wrapperDir); ok {
+		b.WriteString("\n")
+		b.WriteString("replace ")
+		b.WriteString(runtimeModule)
+		b.WriteString(" => ")
+		b.WriteString(filepath.ToSlash(local))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func localRuntimePath(rootDir string, wrapperDir string) (string, bool) {
+	candidates := runtimeCandidates(rootDir)
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		abs, err := filepath.Abs(candidate)
+		if err != nil || seen[abs] {
+			continue
+		}
+		seen[abs] = true
+		if _, err := os.Stat(filepath.Join(abs, "go.mod")); err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(wrapperDir, abs)
+		if err != nil {
+			return abs, true
+		}
+		if rel == "" {
+			rel = "."
+		}
+		return rel, true
+	}
+	return "", false
+}
+
+func runtimeCandidates(rootDir string) []string {
+	var bases []string
+	addBase := func(path string) {
+		if path == "" {
+			return
+		}
+		bases = append(bases, path)
+	}
+	addBase(rootDir)
+	if wd, err := os.Getwd(); err == nil {
+		addBase(wd)
+		addBase(filepath.Dir(wd))
+	}
+	addBase(".")
+	addBase("..")
+
+	var out []string
+	for _, base := range bases {
+		out = append(out,
+			filepath.Join(base, "gode-runtime"),
+			filepath.Join(base, "..", "gode-runtime"),
+		)
+	}
+	return out
 }
 
 func runCommand(ctx context.Context, resolved compiler.Command, args ...string) error {

@@ -40,20 +40,20 @@ func GeneratePrelude(cfg config.Config) string {
 		add(cfg.ContextFieldForCookie(name))
 	}
 	var b strings.Builder
-	b.WriteString("export type GodeContext = {\n")
+	b.WriteString("declare type GodeContext = {\n")
 	for _, field := range fields {
 		b.WriteString("  ")
 		b.WriteString(field)
 		b.WriteString("\n")
 	}
 	b.WriteString("}\n\n")
-	b.WriteString(`export type GodeResponse = {
+	b.WriteString(`declare type GodeResponse = {
   status: number
   body: string
   contentType: string
 }
 
-export type GodeMiddlewareResult = {
+declare type GodeMiddlewareResult = {
   continue: boolean
   ctx: GodeContext
   status: number
