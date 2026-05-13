@@ -65,7 +65,7 @@ func TestGenerateWorkerGoModUsesLocalGopressReplace(t *testing.T) {
 
 	for _, want := range []string{
 		"require (",
-		"github.com/Gode-Ts/gopress v0.1.16",
+		"github.com/Gode-Ts/gopress v0.1.17",
 		"golang.org/x/sync v0.15.0",
 		"replace github.com/Gode-Ts/gopress => " + filepath.ToSlash(rel),
 	} {
@@ -89,7 +89,7 @@ func TestGenerateWorkerGoModUsesTaggedGopressWithoutLocalReplace(t *testing.T) {
 	got := builder.GenerateWorkerGoMod(wrapperDir, appDir, "gopress")
 
 	for _, want := range []string{
-		"github.com/Gode-Ts/gopress v0.1.16",
+		"github.com/Gode-Ts/gopress v0.1.17",
 		"golang.org/x/sync v0.15.0",
 	} {
 		if !strings.Contains(got, want) {
