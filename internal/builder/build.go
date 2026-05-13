@@ -85,10 +85,7 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 	if err := os.WriteFile(filepath.Join(wrapperDir, "go.mod"), []byte(GenerateWorkerGoMod(wrapperDir, cfg.RootDir, cfg.Framework)), 0o644); err != nil {
 		return Result{}, err
 	}
-	output := opts.Output
-	if output == "" {
-		output = filepath.Join(cfg.Abs(cfg.Build.DistDir), "app")
-	}
+	output := buildOutputPath(cfg, opts.Output)
 	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
 		return Result{}, err
 	}
@@ -98,6 +95,16 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("go build failed: %w\n%s", err, string(out))
 	}
 	return Result{BinaryPath: output, WorkDir: workDir, WrapperDir: wrapperDir}, nil
+}
+
+func buildOutputPath(cfg config.Config, output string) string {
+	if output == "" {
+		return filepath.Join(cfg.Abs(cfg.Build.DistDir), "app")
+	}
+	if filepath.IsAbs(output) {
+		return output
+	}
+	return cfg.Abs(output)
 }
 
 func Check(ctx context.Context, cfg config.Config, compilerPath string) error {
