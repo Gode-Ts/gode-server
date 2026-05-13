@@ -125,9 +125,9 @@ func Check(ctx context.Context, cfg config.Config, compilerPath string) error {
 
 const (
 	runtimeModule  = "github.com/Gode-Ts/gode-runtime"
-	runtimeVersion = "v0.1.0"
+	runtimeVersion = "v0.1.2"
 	gopressModule  = "github.com/Gode-Ts/gopress"
-	gopressVersion = "v0.1.0"
+	gopressVersion = "v0.1.3"
 )
 
 func GenerateWorkerGoMod(wrapperDir string, rootDir string, framework string) string {

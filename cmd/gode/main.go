@@ -15,7 +15,7 @@ import (
 	"github.com/Gode-Ts/gode-server/internal/supervisor"
 )
 
-const version = "0.1.0"
+const version = "0.1.3"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))

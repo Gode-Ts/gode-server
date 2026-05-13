@@ -66,7 +66,16 @@ declare type GodeMiddlewareResult = {
 
 func contextFieldNames(cfg config.Config) []string {
 	var fields []string
-	seen := map[string]bool{}
+	seen := map[string]bool{
+		"requestId":           true,
+		"method":              true,
+		"path":                true,
+		"body":                true,
+		"paramId":             true,
+		"queryPage":           true,
+		"headerAuthorization": true,
+		"cookieSession":       true,
+	}
 	add := func(name string) {
 		if !seen[name] {
 			fields = append(fields, name)

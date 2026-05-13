@@ -68,23 +68,59 @@ func GenerateWrapper(cfg config.Config, host string, port int) (string, error) {
 	w("}")
 	w("")
 	w("func buildGodeContext(request *http.Request, params map[string]string) GodeContext {")
-	w("base := runtime.BuildBaseContext(request, params)")
+	w("base := runtime.BuildBaseContextWithOptions(request, params, runtime.ContextOptions{")
+	w("RequestID: true,")
+	w("Body: true,")
+	if containsString(cfg.Server.Context.Query, "page") {
+		w("QueryPage: true,")
+	}
+	if containsStringFold(cfg.Server.Context.Headers, "authorization") {
+		w("HeaderAuthorization: true,")
+	}
+	if containsString(cfg.Server.Context.Cookies, "session") {
+		w("CookieSession: true,")
+	}
+	w("})")
 	w("ctx := GodeContext{BaseContext: base}")
 	for _, route := range cfg.FlatRoutes() {
 		for _, part := range strings.Split(route.FullPath, "/") {
 			if strings.HasPrefix(part, ":") {
 				name := strings.TrimPrefix(part, ":")
+				if isBaseContextParam(name) {
+					continue
+				}
 				w("ctx.%s = params[%q]", tsFieldToGo(cfg.ContextFieldForParam(name)), name)
 			}
 		}
 	}
+	if hasNonBaseQuery(cfg.Server.Context.Query) {
+		w("query := request.URL.Query()")
+	}
 	for _, name := range cfg.Server.Context.Query {
-		w("ctx.%s = request.URL.Query().Get(%q)", tsFieldToGo(cfg.ContextFieldForQuery(name)), name)
+		if isBaseContextQuery(name) {
+			continue
+		}
+		w("ctx.%s = query.Get(%q)", tsFieldToGo(cfg.ContextFieldForQuery(name)), name)
 	}
 	for _, name := range cfg.Server.Context.Headers {
+		if isBaseContextHeader(name) {
+			continue
+		}
 		w("ctx.%s = request.Header.Get(%q)", tsFieldToGo(cfg.ContextFieldForHeader(name)), name)
 	}
+	nonBaseCookies := nonBaseCookieCount(cfg.Server.Context.Cookies)
+	if nonBaseCookies > 1 {
+		w("cookies := map[string]string{}")
+		w("for _, cookie := range request.Cookies() { cookies[cookie.Name] = cookie.Value }")
+	}
 	for _, name := range cfg.Server.Context.Cookies {
+		if isBaseContextCookie(name) {
+			continue
+		}
+		if nonBaseCookies > 1 {
+			w("ctx.%s = cookies[%q]", tsFieldToGo(cfg.ContextFieldForCookie(name)), name)
+			continue
+		}
 		w("if cookie, err := request.Cookie(%q); err == nil { ctx.%s = cookie.Value }", name, tsFieldToGo(cfg.ContextFieldForCookie(name)))
 	}
 	w("return ctx")
@@ -139,4 +175,57 @@ func MiddlewareFunctionNames(cfg config.Config) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
+func containsStringFold(values []string, target string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, target) {
+			return true
+		}
+	}
+	return false
+}
+
+func isBaseContextParam(name string) bool {
+	return name == "id"
+}
+
+func isBaseContextQuery(name string) bool {
+	return name == "page"
+}
+
+func isBaseContextHeader(name string) bool {
+	return strings.EqualFold(name, "authorization")
+}
+
+func isBaseContextCookie(name string) bool {
+	return name == "session"
+}
+
+func hasNonBaseQuery(values []string) bool {
+	for _, value := range values {
+		if !isBaseContextQuery(value) {
+			return true
+		}
+	}
+	return false
+}
+
+func nonBaseCookieCount(values []string) int {
+	count := 0
+	for _, value := range values {
+		if !isBaseContextCookie(value) {
+			count++
+		}
+	}
+	return count
 }
