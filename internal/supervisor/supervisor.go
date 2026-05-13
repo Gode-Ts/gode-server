@@ -27,6 +27,11 @@ type Options struct {
 	Stderr     io.Writer
 }
 
+type cachedProxy struct {
+	raw     string
+	handler http.Handler
+}
+
 func RunDev(ctx context.Context, opts Options) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
@@ -102,10 +107,15 @@ func RunDev(ctx context.Context, opts Options) error {
 }
 
 func proxyHandler(target *atomic.Value) http.Handler {
+	var cache atomic.Value
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := target.Load().(string)
 		if raw == "" {
 			http.Error(w, "gode worker is not ready", http.StatusServiceUnavailable)
+			return
+		}
+		if cached, _ := cache.Load().(cachedProxy); cached.raw == raw && cached.handler != nil {
+			cached.handler.ServeHTTP(w, r)
 			return
 		}
 		u, err := url.Parse(raw)
@@ -113,7 +123,10 @@ func proxyHandler(target *atomic.Value) http.Handler {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		httputil.NewSingleHostReverseProxy(u).ServeHTTP(w, r)
+		proxy := httputil.NewSingleHostReverseProxy(u)
+		handler := http.Handler(proxy)
+		cache.Store(cachedProxy{raw: raw, handler: handler})
+		handler.ServeHTTP(w, r)
 	})
 }
 
