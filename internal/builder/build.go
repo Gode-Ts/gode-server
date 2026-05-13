@@ -89,12 +89,16 @@ func Build(ctx context.Context, opts Options) (Result, error) {
 	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
 		return Result{}, err
 	}
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", output, ".")
+	cmd := exec.CommandContext(ctx, "go", goBuildArgs(output)...)
 	cmd.Dir = wrapperDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return Result{}, fmt.Errorf("go build failed: %w\n%s", err, string(out))
 	}
 	return Result{BinaryPath: output, WorkDir: workDir, WrapperDir: wrapperDir}, nil
+}
+
+func goBuildArgs(output string) []string {
+	return []string{"build", "-mod=mod", "-o", output, "."}
 }
 
 func buildOutputPath(cfg config.Config, output string) string {
