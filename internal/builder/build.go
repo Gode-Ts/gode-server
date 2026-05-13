@@ -127,7 +127,7 @@ const (
 	runtimeModule  = "github.com/Gode-Ts/gode-runtime"
 	runtimeVersion = "v0.1.2"
 	gopressModule  = "github.com/Gode-Ts/gopress"
-	gopressVersion = "v0.1.8"
+	gopressVersion = "v0.1.9"
 )
 
 func GenerateWorkerGoMod(wrapperDir string, rootDir string, framework string) string {
